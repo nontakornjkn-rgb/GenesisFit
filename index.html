@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis-Fit SAINT Console Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0d1117; color: #e5e7eb; }
+    .console-bg { background-color: #161b22; box-shadow: 0 0 15px rgba(0, 198, 255, 0.4); border: 1px solid #00c6ff30; }
+    .metric-card { background-color: #0d1117; border-left: 4px solid #00c6ff; transition: all 0.3s; }
+    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 198, 255, 0.2); }
+    .aether-text { color: #00c6ff; text-shadow: 0 0 5px #00c6ff80; }
+  </style>
+</head>
+<body class="p-6">
+
+  <div class="console-bg p-6 rounded-lg">
+    <h1 class="text-2xl font-bold aether-text mb-4">SAINT Console Dashboard</h1>
+
+    <!-- User Info -->
+    <div class="metric-card p-4 mb-4">
+      <p><strong>SAINT ID:</strong> <span id="saint-id-display">N/A</span></p>
+      <p><strong>Level:</strong> <span id="current-level">0</span></p>
+      <p><strong>Aether Load:</strong> <span id="aether-load-value">0%</span></p>
+    </div>
+
+    <!-- Biometrics -->
+    <div class="metric-card p-4 mb-4">
+      <p><strong>BMI:</strong> <span id="current-bmi">N/A</span></p>
+      <label>Weight (kg): <input id="current-weight" type="number" class="ml-2 p-1 bg-gray-800 text-white"></label>
+      <label>Height (cm): <input id="current-height" type="number" class="ml-2 p-1 bg-gray-800 text-white"></label>
+      <button onclick="updateBiometrics()" class="ml-4 px-3 py-1 bg-green-600 text-white rounded">Update</button>
+    </div>
+
+    <!-- Protocols -->
+    <div class="metric-card p-4 mb-4">
+      <h2 class="font-semibold mb-2">Training Protocols</h2>
+      <div id="protocol-container"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // ✅ Firebase Config ของ genesisfit
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7kVrfqasbqqtu70JD5_MXr5HjLw0ChAY",
+      authDomain: "genesisfit-cc8db.firebaseapp.com",
+      projectId: "genesisfit-cc8db",
+      storageBucket: "genesisfit-cc8db.appspot.com",
+      messagingSenderId: "1077638647212",
+      appId: "1:1077638647212:web:dd6b3bfcb4705266e03e09"
+    };
+
+    // ✅ Gemini API Config
+    const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+    const API_KEY = "AIzaSyCrpDo9fUqekbqvSR9EmTflBwldY7Zs1r8";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUserId = null;
+
+    // Mock Data
+    const MOCK_USER_DATA = { currentLevel: 3, aetherLoad: 65, bmi: '23.5', weightKg: 68, heightCm: 170, lastSynced: new Date().toISOString() };
+    const MOCK_PROTOCOL_DATA = [
+      { name: "Ares Pulse", rank: "S-Tier", description: "High-intensity metabolic conditioning.", target: "Cardio" },
+      { name: "Atlas Core", rank: "A-Tier", description: "Maximal stabilization and trunk strength.", target: "Core" },
+      { name: "Hermes Sprint", rank: "B-Tier", description: "Explosive lower body power training.", target: "Legs" },
+      { name: "Apollo Focus", rank: "A-Tier", description: "Precision movements and muscle control.", target: "Flexibility" }
+    ];
+
+    // Auth
+    const setupAuth = async () => { try { await signInAnonymously(auth); } catch (error) { console.error(error); } };
+    setupAuth();
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        document.getElementById('saint-id-display').textContent = currentUserId;
+        initDashboard(currentUserId);
+      }
+    });
+
+    // Dashboard Init
+    const initDashboard = async (userId) => {
+      if (!userId) return;
+      await fetchUserData(userId);
+      await fetchProtocolData();
+      const userDocRef = doc(db, `artifacts/genesisfit/users/${userId}/biometrics/latest`);
+      onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          document.getElementById('current-bmi').textContent = data.bmi || 'N/A';
+          document.getElementById('current-weight').value = data.weightKg || '';
+          document.getElementById('current-height').value = data.heightCm || '';
+        }
+      });
+    };
+
+    const fetchUserData = async (userId) => {
+      let data = { ...MOCK_USER_DATA, saintId: userId };
+      document.getElementById('current-level').textContent = data.currentLevel;
+      document.getElementById('aether-load-value').textContent = `${data.aetherLoad}%`;
+      document.getElementById('current-bmi').textContent = data.bmi;
+      document.getElementById('current-weight').value = data.weightKg;
+      document.getElementById('current-height').value = data.heightCm;
+      const userDocRef = doc(db, `artifacts/genesisfit/users/${userId}/biometrics/latest`);
+      await setDoc(userDocRef, { weightKg: data.weightKg, heightCm: data.heightCm, bmi: data.bmi, lastSynced: data.lastSynced }, { merge: true });
+    };
+
+    const fetchProtocolData = async () => {
+      let protocolList = MOCK_PROTOCOL_DATA;
+      const protocolContainer = document.getElementById('protocol-container');
+      protocolContainer.innerHTML = '';
+      protocolList.forEach(protocol => {
+        const item = document.createElement('div');
+        item.className = 'p-3 bg-gray-800 rounded-lg flex justify-between items-center hover:bg-gray-700 transition duration-150';
+        item.innerHTML = `
+          <div>
+            <p class="font-bold text-cyan-400">${protocol.name} <span class="text-sm text-gray-400">(${protocol.rank})</span></p>
+            <p class="text-sm text-gray-500">${protocol.description}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full bg-cyan-600 text-white">${protocol.target}</span>
+        `;
+        protocolContainer.appendChild(item);
+      });
+    };
+
+    const calculateBmi = (w, h) => h > 0 ? (w / ((h/100)*(h/100))).toFixed(1) : 'N/A';
+
+    const updateBiometrics = async () => {
+      if (!currentUserId) return;
+      const weight = parseFloat(document.getElementById('current-weight').value);
+      const height = parseFloat(document.getElementById('current-height').value);
+      if (isNaN(weight) || isNaN(height)) return;
