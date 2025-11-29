@@ -1,23 +1,45 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aegis-Fit SAINT Console Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
   <style>
-    body { font-family: 'Inter', sans-serif; background: #0d1117; color: #e5e7eb; }
-    .console-bg { background-color: #161b22; box-shadow: 0 0 15px rgba(0, 198, 255, 0.4); border: 1px solid #00c6ff30; }
-    .metric-card { background-color: #0d1117; border-left: 4px solid #00c6ff; transition: all 0.3s; }
-    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 198, 255, 0.2); }
-    .aether-text { color: #00c6ff; text-shadow: 0 0 5px #00c6ff80; }
+    body {
+      font-family: "Inter", sans-serif;
+      background: #0d1117;
+      color: #e5e7eb;
+    }
+    .console-bg {
+      background-color: #161b22;
+      box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+      border: 1px solid #00c6ff30;
+    }
+    .metric-card {
+      background-color: #0d1117;
+      border-left: 4px solid #00c6ff;
+      transition: all 0.3s;
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 198, 255, 0.2);
+    }
+    .aether-text {
+      color: #00c6ff;
+      text-shadow: 0 0 5px #00c6ff80;
+    }
   </style>
 </head>
 <body class="p-6">
-
   <div class="console-bg p-6 rounded-lg">
-    <h1 class="text-2xl font-bold aether-text mb-4">SAINT Console Dashboard</h1>
+    <h1 class="text-2xl font-bold aether-text mb-4">
+      SAINT Console Dashboard
+    </h1>
 
     <!-- User Info -->
     <div class="metric-card p-4 mb-4">
@@ -28,10 +50,37 @@
 
     <!-- Biometrics -->
     <div class="metric-card p-4 mb-4">
-      <p><strong>BMI:</strong> <span id="current-bmi">N/A</span></p>
-      <label>Weight (kg): <input id="current-weight" type="number" class="ml-2 p-1 bg-gray-800 text-white"></label>
-      <label>Height (cm): <input id="current-height" type="number" class="ml-2 p-1 bg-gray-800 text-white"></label>
-      <button onclick="updateBiometrics()" class="ml-4 px-3 py-1 bg-green-600 text-white rounded">Update</button>
+      <div class="mb-2">
+        <strong>BMI:</strong>
+        <span id="current-bmi">N/A</span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2">
+          <span>Weight (kg):</span>
+          <input
+            id="current-weight"
+            type="number"
+            class="p-1 bg-gray-800 text-white rounded w-24"
+          />
+        </label>
+
+        <label class="flex items-center gap-2">
+          <span>Height (cm):</span>
+          <input
+            id="current-height"
+            type="number"
+            class="p-1 bg-gray-800 text-white rounded w-24"
+          />
+        </label>
+
+        <button
+          onclick="updateBiometrics()"
+          class="px-4 py-1 bg-green-600 text-white rounded"
+        >
+          Update
+        </button>
+      </div>
     </div>
 
     <!-- Protocols -->
@@ -43,101 +92,242 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged,
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      onSnapshot,
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ✅ Firebase Config ของ genesisfit
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyB7kVrfqasbqqtu70JD5_MXr5HjLw0ChAY",
       authDomain: "genesisfit-cc8db.firebaseapp.com",
       projectId: "genesisfit-cc8db",
       storageBucket: "genesisfit-cc8db.appspot.com",
       messagingSenderId: "1077638647212",
-      appId: "1:1077638647212:web:dd6b3bfcb4705266e03e09"
+      appId: "1:1077638647212:web:dd6b3bfcb4705266e03e09",
     };
 
-    // ✅ Gemini API Config
-    const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-    const API_KEY = "AIzaSyCrpDo9fUqekbqvSR9EmTflBwldY7Zs1r8";
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
-
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
     let currentUserId = null;
 
-    // Mock Data
-    const MOCK_USER_DATA = { currentLevel: 3, aetherLoad: 65, bmi: '23.5', weightKg: 68, heightCm: 170, lastSynced: new Date().toISOString() };
+    const MOCK_USER_DATA = {
+      currentLevel: 3,
+      aetherLoad: 65,
+      bmi: "23.5",
+      weightKg: 68,
+      heightCm: 170,
+      lastSynced: new Date().toISOString(),
+    };
+
     const MOCK_PROTOCOL_DATA = [
-      { name: "Ares Pulse", rank: "S-Tier", description: "High-intensity metabolic conditioning.", target: "Cardio" },
-      { name: "Atlas Core", rank: "A-Tier", description: "Maximal stabilization and trunk strength.", target: "Core" },
-      { name: "Hermes Sprint", rank: "B-Tier", description: "Explosive lower body power training.", target: "Legs" },
-      { name: "Apollo Focus", rank: "A-Tier", description: "Precision movements and muscle control.", target: "Flexibility" }
+      {
+        name: "Ares Pulse",
+        rank: "S-Tier",
+        description: "High-intensity metabolic conditioning.",
+        target: "Cardio",
+      },
+      {
+        name: "Atlas Core",
+        rank: "A-Tier",
+        description: "Maximal stabilization and trunk strength.",
+        target: "Core",
+      },
+      {
+        name: "Hermes Sprint",
+        rank: "B-Tier",
+        description: "Explosive lower body power training.",
+        target: "Legs",
+      },
+      {
+        name: "Apollo Focus",
+        rank: "A-Tier",
+        description: "Precision movements and muscle control.",
+        target: "Flexibility",
+      },
     ];
 
-    // Auth
-    const setupAuth = async () => { try { await signInAnonymously(auth); } catch (error) { console.error(error); } };
+    const setupAuth = async () => {
+      try {
+        await signInAnonymously(auth);
+      } catch (err) {
+        console.error(err);
+      }
+    };
     setupAuth();
 
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUserId = user.uid;
-        document.getElementById('saint-id-display').textContent = currentUserId;
-        initDashboard(currentUserId);
-      }
+      if (!user) return;
+      currentUserId = user.uid;
+      document.getElementById("saint-id-display").textContent = currentUserId;
+      initDashboard(currentUserId);
     });
 
-    // Dashboard Init
     const initDashboard = async (userId) => {
       if (!userId) return;
+
       await fetchUserData(userId);
       await fetchProtocolData();
-      const userDocRef = doc(db, `artifacts/genesisfit/users/${userId}/biometrics/latest`);
-      onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          document.getElementById('current-bmi').textContent = data.bmi || 'N/A';
-          document.getElementById('current-weight').value = data.weightKg || '';
-          document.getElementById('current-height').value = data.heightCm || '';
-        }
+
+      const userDocRef = doc(
+        db,
+        `artifacts/genesisfit/users/${userId}/biometrics/latest`
+      );
+
+      onSnapshot(userDocRef, (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        document.getElementById("current-bmi").textContent =
+          data.bmi || "N/A";
+        document.getElementById("current-weight").value =
+          data.weightKg ?? "";
+        document.getElementById("current-height").value =
+          data.heightCm ?? "";
       });
     };
 
     const fetchUserData = async (userId) => {
-      let data = { ...MOCK_USER_DATA, saintId: userId };
-      document.getElementById('current-level').textContent = data.currentLevel;
-      document.getElementById('aether-load-value').textContent = `${data.aetherLoad}%`;
-      document.getElementById('current-bmi').textContent = data.bmi;
-      document.getElementById('current-weight').value = data.weightKg;
-      document.getElementById('current-height').value = data.heightCm;
-      const userDocRef = doc(db, `artifacts/genesisfit/users/${userId}/biometrics/latest`);
-      await setDoc(userDocRef, { weightKg: data.weightKg, heightCm: data.heightCm, bmi: data.bmi, lastSynced: data.lastSynced }, { merge: true });
+      const data = { ...MOCK_USER_DATA, saintId: userId };
+
+      document.getElementById("current-level").textContent =
+        data.currentLevel;
+      document.getElementById("aether-load-value").textContent =
+        data.aetherLoad + "%";
+      document.getElementById("current-bmi").textContent = data.bmi;
+      document.getElementById("current-weight").value = data.weightKg;
+      document.getElementById("current-height").value = data.heightCm;
+
+      const userDocRef = doc(
+        db,
+        `artifacts/genesisfit/users/${userId}/biometrics/latest`
+      );
+      await setDoc(
+        userDocRef,
+        {
+          weightKg: data.weightKg,
+          heightCm: data.heightCm,
+          bmi: data.bmi,
+          lastSynced: data.lastSynced,
+        },
+        { merge: true }
+      );
     };
 
     const fetchProtocolData = async () => {
-      let protocolList = MOCK_PROTOCOL_DATA;
-      const protocolContainer = document.getElementById('protocol-container');
-      protocolContainer.innerHTML = '';
-      protocolList.forEach(protocol => {
-        const item = document.createElement('div');
-        item.className = 'p-3 bg-gray-800 rounded-lg flex justify-between items-center hover:bg-gray-700 transition duration-150';
+      const protocolContainer =
+        document.getElementById("protocol-container");
+      protocolContainer.innerHTML = "";
+
+      MOCK_PROTOCOL_DATA.forEach((protocol) => {
+        const item = document.createElement("div");
+        item.className =
+          "p-3 bg-gray-800 rounded-lg flex justify-between items-center hover:bg-gray-700 transition";
         item.innerHTML = `
           <div>
-            <p class="font-bold text-cyan-400">${protocol.name} <span class="text-sm text-gray-400">(${protocol.rank})</span></p>
+            <p class="font-bold text-cyan-400">
+              ${protocol.name}
+              <span class="text-sm text-gray-400">(${protocol.rank})</span>
+            </p>
             <p class="text-sm text-gray-500">${protocol.description}</p>
           </div>
-          <span class="text-xs px-2 py-1 rounded-full bg-cyan-600 text-white">${protocol.target}</span>
+          <span class="text-xs px-2 py-1 rounded-full bg-cyan-600 text-white">
+            ${protocol.target}
+          </span>
         `;
         protocolContainer.appendChild(item);
       });
     };
 
-    const calculateBmi = (w, h) => h > 0 ? (w / ((h/100)*(h/100))).toFixed(1) : 'N/A';
+    const calculateBmi = (w, h) =>
+      h > 0 ? (w / ((h / 100) * (h / 100))).toFixed(1) : "N/A";
 
     const updateBiometrics = async () => {
       if (!currentUserId) return;
-      const weight = parseFloat(document.getElementById('current-weight').value);
-      const height = parseFloat(document.getElementById('current-height').value);
-      if (isNaN(weight) || isNaN(height)) return;
+
+      const weight = parseFloat(
+        document.getElementById("current-weight").value
+      );
+      const height = parseFloat(
+        document.getElementById("current-height").value
+      );
+
+      if (isNaN(weight) || isNaN(height)) {
+        document.getElementById("current-bmi").textContent = "N/A";
+        return;
+      }
+
+      const bmi = calculateBmi(weight, height);
+      document.getElementById("current-bmi").textContent = bmi;
+
+      const userDocRef = doc(
+        db,
+        `artifacts/genesisfit/users/${currentUserId}/biometrics/latest`
+      );
+      await setDoc(
+        userDocRef,
+        {
+          weightKg: weight,
+          heightCm: height,
+          bmi,
+          lastSynced: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    };
+
+    // ให้ปุ่มใน HTML มองเห็นฟังก์ชันนี้
+    window.updateBiometrics = updateBiometrics;
+  </script>
+</body><script>
+// Client-side BMI calculation logic
+document.getElementById('update-bmi-button').addEventListener('click', function() {
+    const weight = parseFloat(document.getElementById('weight-input').value);
+    const height = parseFloat(document.getElementById('height-input').value);
+
+    // FIX: The BMI display ID in your HTML is 'current-bmi'
+    const bmiDisplayElement = document.getElementById('current-bmi'); 
+
+    if (weight > 0 && height > 0) {
+        // BMI formula: weight (kg) / (height (m) * height (m))
+        const heightInMeters = height / 100;
+        const bmi = weight / (heightInMeters * heightInMeters);
+        bmiDisplayElement.textContent = bmi.toFixed(2);
+    } else {
+        bmiDisplayElement.textContent = 'N/A';
+    }
+});
+</script><script>
+document.getElementById('update-bmi-button').addEventListener('click', function() {
+    // 1. Define variables and get values from input fields
+    const weight = parseFloat(document.getElementById('weight-input').value);
+    const height = parseFloat(document.getElementById('height-input').value);
+    const bmiDisplayElement = document.getElementById('current-bmi'); 
+
+    // 2. Check if inputs are valid
+    if (weight > 0 && height > 0) {
+        // 3. Calculate BMI
+        // BMI formula: weight (kg) / (height (m) * height (m))
+        const heightInMeters = height / 100;
+        const bmi = weight / (heightInMeters * heightInMeters);
+        
+        // 4. Display result
+        bmiDisplayElement.textContent = bmi.toFixed(2);
+    } else {
+        // 5. Handle invalid input
+        bmiDisplayElement.textContent = 'N/A';
+    }
+});
+</script>
+
+
+</html>
+
